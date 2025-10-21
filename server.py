@@ -5,12 +5,32 @@ import json
 import time
 import random
 import os
+import sys
 from urllib.parse import urlparse, parse_qs
 from collections import defaultdict
 import uuid
 
-# CRITICAL: Use Railway's dynamic PORT environment variable
-PORT = int(os.environ.get('PORT', 8080))
+# SAFE PORT HANDLING for Railway
+def get_port():
+    port_str = os.environ.get('PORT', '8080')
+    print(f"🔍 Raw PORT value from env: '{port_str}'")
+    
+    # Remove any $ or { } characters (Railway template variables)
+    port_str = port_str.replace('$', '').replace('{', '').replace('}', '').strip()
+    
+    try:
+        port = int(port_str)
+        if 0 <= port <= 65535:
+            print(f"✅ Valid PORT: {port}")
+            return port
+        else:
+            print(f"⚠️  PORT {port} out of range, using 8080")
+            return 8080
+    except (ValueError, TypeError):
+        print(f"⚠️  Invalid PORT value '{port_str}', using 8080")
+        return 8080
+
+PORT = get_port()
 
 # Game state
 games = {}
