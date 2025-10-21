@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incha Porco - Multiplayer Memory Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background: linear-gradient(135deg, #ffeaa7 0%, #fd79a8 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #e84393;
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #6c5ce7;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+        
+        .screen {
+            display: none;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        .menu {
+            text-align: center;
+        }
+        
+        input {
+            padding: 15px;
+            font-size: 1.2em;
+            border: 3px solid #e84393;
+            border-radius: 10px;
+            margin: 10px;
+            width: 300px;
+            max-width: 90%;
+        }
+        
+        button {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            background: #e84393;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #fd79a8;
+            transform: scale(1.05);
+        }
+        
+        button:disabled {
+            background: #dfe6e9;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        
+        .players-list {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .player-card {
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        
+        .player-card.current-turn {
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 0 20px #ffeaa7;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .player-card .score {
+            font-size: 1.5em;
+            margin-left: 10px;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin: 30px auto;
+            max-width: 900px;
+        }
+        
+        .card {
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, #fd79a8, #e84393);
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            transition: all 0.3s;
+            position: relative;
+            border: 4px solid #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        
+        .card:hover:not(.flipped):not(.matched) {
+            transform: scale(1.05);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+        
+        .card.flipped {
+            background: white;
+            border-color: #6c5ce7;
+        }
+        
+        .card.matched {
+            background: #dfe6e9;
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .card-back {
+            font-size: 2em;
+        }
+        
+        .game-info {
+            text-align: center;
+            font-size: 1.3em;
+            color: #2d3436;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
+        .winner-message {
+            text-align: center;
+            font-size: 2em;
+            color: #00b894;
+            margin: 20px 0;
+            animation: bounce 1s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .game-id-display {
+            text-align: center;
+            background: #74b9ff;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .waiting-room {
+            text-align: center;
+        }
+        
+        .pig-logo {
+            font-size: 5em;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .game-board {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .card {
+                font-size: 2em;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐷 Incha Porco 🐷</h1>
+        <p class="subtitle">Multiplayer Pig Memory Game</p>
+        
+        <!-- Menu Screen -->
+        <div id="menu" class="screen active">
+            <div class="menu">
+                <div class="pig-logo">🐷🐖🐽</div>
+                <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
+                <br>
+                <button onclick="createGame()">Create New Game</button>
+                <br>
+                <input type="text" id="gameId" placeholder="Enter Game ID">
+                <br>
+                <button onclick="joinGame()">Join Game</button>
+            </div>
+        </div>
+        
+        <!-- Waiting Room -->
+        <div id="waiting" class="screen">
+            <div class="waiting-room">
+                <h2>Waiting Room</h2>
+                <div class="game-id-display">
+                    Game ID: <span id="displayGameId"></span>
+                </div>
+                <p style="color: #636e72; margin: 20px 0;">Share this ID with your friends!</p>
+                <div class="players-list" id="waitingPlayers"></div>
+                <p style="margin: 20px 0; font-size: 1.1em;">Waiting for players... (2-5 players needed)</p>
+                <button id="startBtn" onclick="startGame()" disabled>Start Game</button>
+                <button onclick="backToMenu()">Back to Menu</button>
+            </div>
+        </div>
+        
+        <!-- Game Screen -->
+        <div id="game" class="screen">
+            <div class="game-info" id="turnInfo"></div>
+            <div class="players-list" id="gamePlayers"></div>
+            <div class="game-board" id="gameBoard"></div>
+            <div class="winner-message" id="winnerMessage"></div>
+            <div style="text-align: center;">
+                <button onclick="backToMenu()">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Audio elements -->
+    <audio id="fartSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=" type="audio/wav">
+    </audio>
+    <audio id="oinkSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=" type="audio/wav">
+    </audio>
+
+    <script>
+        let sessionId = null;
+        let pollingInterval = null;
+        let lastUpdate = 0;
+        let gameState = {
+            gameId: null,
+            playerId: null,
+            players: [],
+            started: false,
+            currentTurn: null,
+            deckSize: 0,
+            flippedCards: [],
+            matchedCards: new Set()
+        };
+        
+        async function sendAction(action, data = {}) {
+            const response = await fetch('/api/action', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: action,
+                    session_id: sessionId,
+                    ...data
+                })
+            });
+            return await response.json();
+        }
+        
+        async function pollForUpdates() {
+            if (!sessionId) return;
+            
+            try {
+                const response = await fetch(`/api/poll?session=${sessionId}&last_update=${lastUpdate}`);
+                if (response.status === 200) {
+                    const data = await response.json();
+                    handleGameUpdate(data);
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+            
+            // Continue polling
+            setTimeout(pollForUpdates, 100);
+        }
+        
+        function handleGameUpdate(data) {
+            const wasStarted = gameState.started;
+            const oldMatchedSize = gameState.matchedCards.size;
+            
+            gameState.players = data.players;
+            gameState.started = data.started;
+            gameState.currentTurn = data.current_turn;
+            gameState.deckSize = data.deck_size;
+            gameState.matchedCards = new Set(data.matched_cards);
+            lastUpdate = data.last_update;
+            
+            // Check if game just started
+            if (!wasStarted && data.started) {
+                showGameScreen();
+            }
+            
+            // Check if new cards matched
+            if (gameState.matchedCards.size > oldMatchedSize) {
+                playSound();
+            }
+            
+            updatePlayersList();
+            if (gameState.started) {
+                updateTurnInfo();
+            }
+        }
+        
+        async function createGame() {
+            const name = document.getElementById('playerName').value.trim();
+            if (!name) {
+                alert('Please enter your name');
+                return;
+            }
+            
+            const result = await sendAction('create_game', { name: name });
+            if (result.success) {
+                sessionId = result.session_id;
+                gameState.gameId = result.game_id;
+                gameState.playerId = result.player_id;
+                showWaitingRoom();
+                pollForUpdates();
+            } else {
+                alert(result.error || 'Failed to create game');
+            }
+        }
+        
+        async function joinGame() {
+            const name = document.getElementById('playerName').value.trim();
+            const gameId = document.getElementById('gameId').value.trim();
+            
+            if (!name || !gameId) {
+                alert('Please enter your name and game ID');
+                return;
+            }
+            
+            const result = await sendAction('join_game', { 
+                game_id: gameId,
+                name: name
+            });
+            
+            if (result.success) {
+                sessionId = result.session_id;
+                gameState.gameId = gameId;
+                gameState.playerId = result.player_id;
+                showWaitingRoom();
+                pollForUpdates();
+            } else {
+                alert(result.error || 'Failed to join game');
+            }
+        }
+        
+        async function startGame() {
+            const result = await sendAction('start_game');
+            if (!result.success) {
+                alert(result.error || 'Failed to start game');
+            }
+        }
+        
+        function showWaitingRoom() {
+            document.getElementById('menu').classList.remove('active');
+            document.getElementById('waiting').classList.add('active');
+            document.getElementById('displayGameId').textContent = gameState.gameId;
+            updatePlayersList();
+        }
+        
+        function showGameScreen() {
+            document.getElementById('waiting').classList.remove('active');
+            document.getElementById('game').classList.add('active');
+            renderGameBoard();
+            updateTurnInfo();
+            updatePlayersList();
+        }
+        
+        function updatePlayersList() {
+            const waitingList = document.getElementById('waitingPlayers');
+            const gameList = document.getElementById('gamePlayers');
+            
+            const playersHtml = gameState.players.map(p => {
+                const isCurrent = gameState.started && p.id === gameState.currentTurn;
+                const isMe = p.id === gameState.playerId;
+                return `
+                    <div class="player-card ${isCurrent ? 'current-turn' : ''}">
+                        ${isMe ? '👑 ' : ''}${p.name}
+                        <span class="score">${p.score}/7</span>
+                    </div>
+                `;
+            }).join('');
+            
+            if (waitingList) waitingList.innerHTML = playersHtml;
+            if (gameList) gameList.innerHTML = playersHtml;
+            
+            // Enable start button if enough players
+            const startBtn = document.getElementById('startBtn');
+            if (startBtn && gameState.players.length >= 2) {
+                startBtn.disabled = false;
+            }
+        }
+        
+        function renderGameBoard() {
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            
+            for (let i = 0; i < gameState.deckSize; i++) {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.index = i;
+                card.innerHTML = '<div class="card-back">🐷</div>';
+                card.onclick = () => flipCard(i);
+                board.appendChild(card);
+            }
+        }
+        
+        async function flipCard(index) {
+            if (gameState.currentTurn !== gameState.playerId) {
+                alert("It's not your turn!");
+                return;
+            }
+            
+            // Optimistically flip the card
+            const card = document.querySelector(`[data-index="${index}"]`);
+            if (!card || card.classList.contains('matched') || card.classList.contains('flipped')) {
+                return;
+            }
+            
+            const result = await sendAction('flip_card', { card_index: index });
+            
+            if (result.success) {
+                handleCardFlipLocal(result);
+            } else {
+                alert(result.error || 'Cannot flip card');
+            }
+        }
+        
+        function handleCardFlipLocal(data) {
+            if (data.error) {
+                return;
+            }
+            
+            const card = document.querySelector(`[data-index="${data.card_index}"]`);
+            if (card) {
+                card.classList.add('flipped');
+                card.innerHTML = data.card_value;
+            }
+            
+            if (data.match !== undefined) {
+                setTimeout(() => {
+                    if (data.match) {
+                        // Mark as matched
+                        document.querySelectorAll('.card.flipped:not(.matched)').forEach(c => {
+                            c.classList.add('matched');
+                            gameState.matchedCards.add(parseInt(c.dataset.index));
+                        });
+                        
+                        // Sound will play from polling update
+                        
+                        // Check for winner
+                        if (data.winner !== undefined) {
+                            document.getElementById('winnerMessage').textContent = 
+                                `🎉 ${data.winner_name} wins! 🎉`;
+                            document.getElementById('winnerMessage').style.display = 'block';
+                        }
+                    } else {
+                        // Flip back
+                        document.querySelectorAll('.card.flipped:not(.matched)').forEach(c => {
+                            c.classList.remove('flipped');
+                            c.innerHTML = '<div class="card-back">🐷</div>';
+                        });
+                    }
+                }, 1500);
+            }
+        }
+        
+        function playSound() {
+            // Alternate between fart and oink sounds
+            const soundChoice = Math.random() > 0.5 ? 'fart' : 'oink';
+            
+            // Create actual sound using Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (soundChoice === 'fart') {
+                // Fart sound: descending frequency
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.5);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            } else {
+                // Oink sound: quick burst
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+            }
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+        
+        function updateTurnInfo() {
+            const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurn);
+            const isMyTurn = gameState.currentTurn === gameState.playerId;
+            
+            const turnInfo = document.getElementById('turnInfo');
+            if (currentPlayer) {
+                turnInfo.textContent = isMyTurn ? 
+                    "🎯 YOUR TURN! 🎯" : 
+                    `${currentPlayer.name}'s turn`;
+                turnInfo.style.color = isMyTurn ? '#00b894' : '#2d3436';
+            }
+        }
+        
+        function backToMenu() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+            sessionId = null;
+            location.reload();
+        }
+    </script>
+</body>
+</html>
