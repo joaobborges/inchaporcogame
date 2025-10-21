@@ -2,7 +2,6 @@
 import http.server
 import socketserver
 import json
-import threading
 import time
 import random
 import os
@@ -10,13 +9,12 @@ from urllib.parse import urlparse, parse_qs
 from collections import defaultdict
 import uuid
 
-# Use Railway's PORT if available, otherwise default to 8080
+# CRITICAL: Use Railway's dynamic PORT environment variable
 PORT = int(os.environ.get('PORT', 8080))
 
 # Game state
 games = {}
 player_sessions = {}
-game_states = {}
 
 class Game:
     def __init__(self, game_id):
@@ -129,13 +127,36 @@ class Game:
 
 class GameHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory='/home/claude/incha-porco/frontend', **kwargs)
+        # Serve files from current directory
+        super().__init__(*args, directory='.', **kwargs)
+    
+    def log_message(self, format, *args):
+        # Log to stdout for Railway logs
+        print(f"{self.address_string()} - {format % args}")
     
     def do_GET(self):
         parsed_path = urlparse(self.path)
         
         if parsed_path.path == '/api/poll':
             self.handle_poll()
+        elif parsed_path.path == '/' or parsed_path.path == '':
+            # Serve the main index.html
+            try:
+                with open('frontend/index.html', 'rb') as f:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'text/html')
+                    self.end_headers()
+                    self.wfile.write(f.read())
+            except FileNotFoundError:
+                # Try serving from root if frontend folder doesn't exist
+                try:
+                    with open('index.html', 'rb') as f:
+                        self.send_response(200)
+                        self.send_header('Content-type', 'text/html')
+                        self.end_headers()
+                        self.wfile.write(f.read())
+                except FileNotFoundError:
+                    self.send_error(404, "index.html not found")
         else:
             super().do_GET()
     
@@ -259,8 +280,15 @@ class GameHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
 
-print(f"Starting Incha Porco server on http://0.0.0.0:{PORT}")
-print(f"Access the game at: http://0.0.0.0:{PORT}/")
+# Start the server
+print(f"🐷 Starting Incha Porco server...")
+print(f"📡 Binding to 0.0.0.0:{PORT}")
+print(f"✅ Server ready!")
 
-with socketserver.TCPServer(("0.0.0.0", PORT), GameHandler) as httpd:
-    httpd.serve_forever()
+try:
+    with socketserver.TCPServer(("0.0.0.0", PORT), GameHandler) as httpd:
+        print(f"🎮 Incha Porco is running on port {PORT}")
+        httpd.serve_forever()
+except Exception as e:
+    print(f"❌ Error starting server: {e}")
+    raise
