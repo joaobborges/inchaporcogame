@@ -1,21 +1,16 @@
 web: python3 server.py
 ```
 
-The `web:` prefix tells Railway this is a web service that needs a PORT.
+That's it! Nothing else.
 
-### **Step 3: Redeploy**
+---
 
-After deleting the PORT variable (if it exists):
-1. Click on your service
-2. Go to "Deployments" tab
-3. Click the three dots on the latest deployment
-4. Click "Redeploy"
+## 📝 **How to Fix:**
 
-### **Step 4: Check the New Logs**
+### **Option 1: Recreate the Procfile**
 
-After redeployment, the logs should show:
+1. **Delete your current Procfile**
+2. **Create a NEW file called `Procfile`** (no extension!)
+3. **Add ONLY this line:**
 ```
-🔍 Raw PORT value from env: 'XXXX'  (where XXXX is a number like 3000, 5000, etc.)
-✅ Valid PORT: XXXX
-🐷 Starting Incha Porco server...
-📡 Binding to 0.0.0.0:XXXX
+   web: python3 server.py
